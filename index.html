@@ -17,6 +17,21 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <!-- React & Babel -->
+        <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script>
+        const firebaseConfig = {
+          apiKey: "AIzaSyBM5AmsW3KqzFJGmh57jFmx_z2bwBt-CoU",
+          authDomain: "leconghuynh.firebaseapp.com",
+          projectId: "leconghuynh",
+          storageBucket: "leconghuynh.firebasestorage.app",
+          messagingSenderId: "223681683898",
+          appId: "1:223681683898:web:c059f218e65c7d1e99bd83"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+    </script>
     <script src="https://unpkg.com/react@17/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1815,6 +1830,46 @@
             const [lessonTree, setLessonTree] = useState(initialLessonData);
             const [registeredStudents, setRegisteredStudents] = useState({}); // Lưu trữ tài khoản học sinh đã đăng ký hoặc đổi mật khẩu
             const [registeredTeachers, setRegisteredTeachers] = useState({"admin": "admin"}); // Lưu tài khoản giáo viên đã đăng ký
+            
+            const [dataLoaded, setDataLoaded] = useState(false);
+            const skipNextWrite = useRef(false);
+
+            useEffect(() => {
+                const unsub = db.collection("appData").doc("main").onSnapshot((docSnap) => {
+                    skipNextWrite.current = true;
+                    if (docSnap.exists) {
+                        const data = docSnap.data();
+                        if (data.classTree) setClassTree(data.classTree);
+                        if (data.lessonTree) setLessonTree(data.lessonTree);
+                        if (data.registeredStudents) setRegisteredStudents(data.registeredStudents);
+                        if (data.registeredTeachers) setRegisteredTeachers(data.registeredTeachers);
+                    } else {
+                        db.collection("appData").doc("main").set({
+                            classTree: initialClassData,
+                            lessonTree: initialLessonData,
+                            registeredStudents: {},
+                            registeredTeachers: {"admin": "admin"}
+                        });
+                    }
+                    setDataLoaded(true);
+                }, (error) => {
+                    console.error("Lỗi đọc Firestore:", error);
+                    setDataLoaded(true);
+                });
+                return () => unsub();
+            }, []);
+
+            useEffect(() => {
+                if (!dataLoaded) return;
+                if (skipNextWrite.current) { skipNextWrite.current = false; return; }
+                db.collection("appData").doc("main").set({
+                    classTree, lessonTree, registeredStudents, registeredTeachers
+                }, { merge: true });
+            }, [classTree, lessonTree, registeredStudents, registeredTeachers, dataLoaded]);
+
+            if (!dataLoaded) {
+                return <div className="min-h-screen flex items-center justify-center text-gray-500 font-bold">Đang tải dữ liệu...</div>;
+            }
             
             const [toast, setToast] = useState({ show: false, msg: "", type: "success" });
             const showToast = (msg, type="success") => { setToast({ show: true, msg, type }); setTimeout(() => setToast({ show: false, msg: "", type: "success" }), 3000); };
