@@ -1867,10 +1867,7 @@
                 }, { merge: true });
             }, [classTree, lessonTree, registeredStudents, registeredTeachers, dataLoaded]);
 
-            if (!dataLoaded) {
-                return <div className="min-h-screen flex items-center justify-center text-gray-500 font-bold">Đang tải dữ liệu...</div>;
-            }
-            
+                      
             const [toast, setToast] = useState({ show: false, msg: "", type: "success" });
             const showToast = (msg, type="success") => { setToast({ show: true, msg, type }); setTimeout(() => setToast({ show: false, msg: "", type: "success" }), 3000); };
 
@@ -2053,6 +2050,9 @@
                 );
             };
 
+                      if (!dataLoaded) {
+                return <div className="min-h-screen flex items-center justify-center text-gray-500 font-bold">Đang tải dữ liệu...</div>;
+            }
             return (
                 <div>
                     {!user && !forceChangePassUser ? <AuthScreen /> : 
