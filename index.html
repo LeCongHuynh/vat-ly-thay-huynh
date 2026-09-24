@@ -16,8 +16,7 @@
     <!-- Thư viện SheetJS cho tính năng xuất/nhập Excel -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-    <!-- React & Babel -->
-        <!-- Firebase -->
+    <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <script>
@@ -221,6 +220,47 @@
                         <div className="flex justify-end space-x-3">
                             <button onClick={onCancel} className="px-4 py-2 bg-gray-100 rounded-lg">Hủy</button>
                             <button onClick={() => onConfirm(selectedGrade, selectedClass)} className="px-4 py-2 text-white bg-indigo-600 rounded-lg">Chuyển</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const AddClassModal = ({ isOpen, title, grades, initialGrade, onConfirm, onCancel }) => {
+            const [grade, setGrade] = useState(initialGrade || '');
+            const [className, setClassName] = useState('');
+
+            useEffect(() => {
+                if (isOpen) {
+                    setGrade(initialGrade || (grades.length > 0 ? grades[0] : ''));
+                    setClassName('');
+                }
+            }, [isOpen, initialGrade, grades]);
+
+            if (!isOpen) return null;
+
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] animate-fadeIn">
+                    <div className="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full mx-4">
+                        <h3 className="text-lg font-bold text-gray-800 mb-4">{title}</h3>
+                        <div className="space-y-4 mb-6">
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Chọn Khối đích</label>
+                                <select value={grade} onChange={e=>setGrade(e.target.value)} className="w-full p-2 border rounded-md">
+                                    {grades.map(g => <option key={g} value={g}>{g}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Tên lớp mới</label>
+                                <input type="text" value={className} onChange={e=>setClassName(e.target.value)} placeholder="Ví dụ: 10A3..." className="w-full p-2 border rounded-md focus:ring-2 focus:ring-indigo-500" autoFocus />
+                            </div>
+                        </div>
+                        <div className="flex justify-end space-x-3">
+                            <button onClick={onCancel} className="px-4 py-2 bg-gray-100 rounded-lg">Hủy</button>
+                            <button onClick={() => {
+                                if (!className.trim()) return;
+                                onConfirm(grade, className.trim());
+                            }} className="px-4 py-2 text-white bg-indigo-600 rounded-lg">Lưu</button>
                         </div>
                     </div>
                 </div>
@@ -659,6 +699,7 @@
             const [quizImportConfig, setQuizImportConfig] = useState({ isOpen: false, path: null });
             const [resourceModalConfig, setResourceModalConfig] = useState({ isOpen: false });
             const [assignQuizConfig, setAssignQuizConfig] = useState({ isOpen: false });
+            const [addClassConfig, setAddClassConfig] = useState({ isOpen: false });
 
             // Lesson state
             const [lessonGrade, setLessonGrade] = useState("Khối 10");
@@ -690,17 +731,11 @@
             const students = classTree[selectedGrade]?.[selectedClass] || [];
             const isAllSelected = students.length > 0 && selectedStudents.length === students.length;
 
-            const closeAllModals = () => { setModalConfig({isOpen:false}); setPromptConfig({isOpen:false}); setMultiSelectConfig({isOpen:false}); setEditStudentConfig({isOpen:false}); setResourceModalConfig({isOpen:false}); setAssignQuizConfig({isOpen: false}); };
+            const closeAllModals = () => { setModalConfig({isOpen:false}); setPromptConfig({isOpen:false}); setMultiSelectConfig({isOpen:false}); setEditStudentConfig({isOpen:false}); setResourceModalConfig({isOpen:false}); setAssignQuizConfig({isOpen: false}); setAddClassConfig({isOpen: false}); };
 
             // Student Logic
             const handleAddClass = () => {
-                setPromptConfig({ isOpen: true, title: "Thêm Lớp Mới", placeholder: "Tên lớp", onConfirm: (val) => {
-                    if(val && !classTree[selectedGrade][val]) {
-                        setClassTree(prev => ({...prev, [selectedGrade]: {...prev[selectedGrade], [val]: []}}));
-                        setSelectedClass(val); showToast("Thêm lớp thành công!");
-                    }
-                    closeAllModals();
-                }});
+                setAddClassConfig({ isOpen: true });
             };
 
             const handleEditClass = (grade, oldCls) => {
@@ -751,6 +786,7 @@
                 newTree[selectedGrade][selectedClass] = [...newTree[selectedGrade][selectedClass], ...valid];
                 setClassTree(newTree); setStudentInputs([{name:"", phone:""}]); showToast("Thêm thành công!");
             };
+            
             const handleDeleteSelected = () => {
                 if(selectedStudents.length === 0) return showToast("Chưa chọn học sinh!", "error");
                 setModalConfig({isOpen: true, title: "Xóa học sinh", message: `Xóa ${selectedStudents.length} em?`, isDanger: true, onConfirm: () => {
@@ -759,6 +795,7 @@
                     setClassTree(newTree); setSelectedStudents([]); setIsSelecting(false); closeAllModals(); showToast("Đã xóa!");
                 }});
             };
+            
             const handleMoveSelected = () => {
                 if(selectedStudents.length === 0) return showToast("Chưa chọn học sinh!", "error");
                 setMultiSelectConfig({isOpen: true, title: "Chuyển lớp", options: classTree, onConfirm: (tGrade, tClass) => {
@@ -1155,7 +1192,6 @@
                                 
                                 {statSubTab === 'byClass' && (
                                     <div>
-                                        {}
                                         <div className="flex space-x-4 mb-4">
                                             <select value={curStatGrade} onChange={e => {setStatGrade(e.target.value); setStatClass("");}} className="border p-2 rounded bg-gray-50 min-w-[120px]">
                                                 {availableStatGrades.map(g => <option key={g} value={g}>{g}</option>)}
@@ -1173,7 +1209,6 @@
                                 )}
                                 {statSubTab === 'byStudent' && (
                                     <div>
-                                        {}
                                         <div className="flex space-x-4 mb-4">
                                             <select value={curStatGrade} onChange={e => {setStatGrade(e.target.value); setStatClass(""); setStatStudentId("");}} className="border p-2 rounded bg-gray-50 min-w-[120px]">
                                                 {availableStatGrades.map(g => <option key={g} value={g}>{g}</option>)}
@@ -1229,7 +1264,6 @@
                                 )}
                                 {statSubTab === 'byQuiz' && (
                                     <div>
-                                        {}
                                         <div className="flex space-x-2 mb-4">
                                             <select value={curStatGrade} onChange={e => {setStatGrade(e.target.value); setStatClass(""); setStatChapter(""); setStatLessonId("");}} className="border p-2 rounded bg-gray-50 text-sm">
                                                 {availableStatGrades.map(g => <option key={g} value={g}>{g}</option>)}
@@ -1314,6 +1348,17 @@
                     <CustomModal {...modalConfig} onCancel={closeAllModals} />
                     <CustomPrompt {...promptConfig} onCancel={closeAllModals} />
                     <MultiSelectModal {...multiSelectConfig} onCancel={closeAllModals} />
+                    <AddClassModal isOpen={addClassConfig.isOpen} title="Thêm Lớp Mới" grades={Object.keys(classTree)} initialGrade={selectedGrade} onCancel={closeAllModals} onConfirm={(g, val) => {
+                        if(val && !classTree[g][val]) {
+                            setClassTree(prev => ({...prev, [g]: {...prev[g], [val]: []}}));
+                            setSelectedGrade(g);
+                            setSelectedClass(val);
+                            showToast("Thêm lớp thành công!");
+                        } else if (classTree[g][val]) {
+                            showToast("Lớp đã tồn tại trong khối này!", "error");
+                        }
+                        closeAllModals();
+                    }} />
                     <AddResourceModal {...resourceModalConfig} onCancel={closeAllModals} />
                     <AssignQuizModal isOpen={assignQuizConfig.isOpen} grade={assignQuizConfig.grade} classes={assignQuizConfig.classes || []} quiz={assignQuizConfig.quiz} onCancel={closeAllModals} onConfirm={(selectedClasses) => {
                         const {c, i, qIdx} = assignQuizConfig.path;
@@ -1339,20 +1384,16 @@
                         const {c, i, qIdx} = quizBuilderState.path;
                         const newTree = JSON.parse(JSON.stringify(lessonTree)); 
                         
-                        // Đảm bảo mảng quizzes tồn tại
                         if (!newTree[lessonGrade][c][i].quizzes) newTree[lessonGrade][c][i].quizzes = [];
                         
-                        // Nếu là đề mới (qIdx === -1), tạo id mới và push vào mảng
                         if (qIdx === -1) {
                             data.id = generateId();
                             newTree[lessonGrade][c][i].quizzes.push(data);
                         } else {
-                            // Cập nhật đề cũ
                             newTree[lessonGrade][c][i].quizzes[qIdx] = data;
                         }
                         
                         setLessonTree(newTree); 
-                        // Cập nhật lại UI hiện tại
                         if (selectedLesson && selectedLesson.chapter === c && selectedLesson.lessonIndex === i) {
                             setSelectedLesson({...newTree[lessonGrade][c][i], chapter: c, lessonIndex: i});
                         }
@@ -1370,7 +1411,6 @@
 
             const grades = Object.keys(classTree);
             const classes = grade ? Object.keys(classTree[grade]) : [];
-            // Lọc danh sách học sinh: CHỈ lấy những học sinh có SĐT khớp với SĐT đang đăng nhập
             const students = (grade && cls) ? classTree[grade][cls].filter(s => s.phone === phone) : [];
 
             const handleSubmit = (e) => {
@@ -1434,34 +1474,32 @@
 
         const StudentQuizPlayer = ({ quiz, onClose, onComplete }) => {
             const [answers, setAnswers] = useState({ part1: {}, part2: {}, part3: {} });
-            const answersRef = useRef(answers); // Bổ sung ref để theo dõi đáp án thực tế mới nhất
+            const answersRef = useRef(answers);
             const [timeLeft, setTimeLeft] = useState((quiz.timeLimit || 45) * 60);
             const [isSubmitted, setIsSubmitted] = useState(false);
-        const [scoreResult, setScoreResult] = useState(null);
-        const [activeTab, setActiveTab] = useState('part1');
-        const [showConfirmModal, setShowConfirmModal] = useState({ isOpen: false, type: null }); // Thêm state quản lý hộp thoại
+            const [scoreResult, setScoreResult] = useState(null);
+            const [activeTab, setActiveTab] = useState('part1');
+            const [showConfirmModal, setShowConfirmModal] = useState({ isOpen: false, type: null });
 
-        // Cập nhật ref mỗi khi học sinh có thay đổi đáp án
-        useEffect(() => {
-            answersRef.current = answers;
-        }, [answers]);
+            useEffect(() => {
+                answersRef.current = answers;
+            }, [answers]);
 
-        useEffect(() => {
-            if (isSubmitted) return;
-            const timer = setInterval(() => {
-                setTimeLeft(prev => Math.max(0, prev - 1));
-            }, 1000);
-            return () => clearInterval(timer);
-        }, [isSubmitted]);
+            useEffect(() => {
+                if (isSubmitted) return;
+                const timer = setInterval(() => {
+                    setTimeLeft(prev => Math.max(0, prev - 1));
+                }, 1000);
+                return () => clearInterval(timer);
+            }, [isSubmitted]);
 
-        useEffect(() => {
-            // Tự động nộp bài khi thời gian bằng 0
-            if (timeLeft === 0 && !isSubmitted) {
-                handleSubmit();
-            }
-        }, [timeLeft, isSubmitted]);
+            useEffect(() => {
+                if (timeLeft === 0 && !isSubmitted) {
+                    handleSubmit();
+                }
+            }, [timeLeft, isSubmitted]);
 
-        const formatTime = (secs) => {
+            const formatTime = (secs) => {
                 const m = Math.floor(secs / 60); const s = secs % 60;
                 return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
             };
@@ -1473,15 +1511,13 @@
                 const p2Scores = quiz.part2Scores || { s1: 0.1, s2: 0.25, s3: 0.5, s4: 1.0 };
                 const p3Score = quiz.part3Score || 0.5;
 
-                const currentAnswers = answersRef.current; // Sử dụng đáp án mới nhất
+                const currentAnswers = answersRef.current;
 
-                // Chấm Phần 1
                 (quiz.questions?.part1 || []).forEach((q) => {
                     maxPossibleScore += p1Score;
                     if (currentAnswers.part1[q.id] === q.correctOption) totalScore += p1Score;
                 });
 
-                // Chấm Phần 2
                 (quiz.questions?.part2 || []).forEach((q) => {
                     maxPossibleScore += p2Scores.s4;
                     let correctCount = 0;
@@ -1494,25 +1530,23 @@
                     if (correctCount === 4) totalScore += p2Scores.s4;
                 });
 
-                // Chấm Phần 3 (Ép kiểu String an toàn 100%)
                 (quiz.questions?.part3 || []).forEach((q) => {
                     maxPossibleScore += p3Score;
                     const studentAns = String(currentAnswers.part3[q.id] || "").trim().replace(',', '.');
                     const correctAns = String(q.shortAnswer || "").trim().replace(',', '.');
-                if (studentAns !== "" && studentAns === correctAns) totalScore += p3Score;
-            });
+                    if (studentAns !== "" && studentAns === correctAns) totalScore += p3Score;
+                });
 
-            setShowConfirmModal({ isOpen: false, type: null }); // Đóng hộp thoại nếu đang mở
-            setScoreResult({ score: totalScore, max: maxPossibleScore });
-            setIsSubmitted(true);
-            
-            // Báo cáo kết quả về màn hình chính để cập nhật thống kê
-            if (onComplete) {
-                onComplete({ quizId: quiz.id, score: totalScore, maxScore: maxPossibleScore });
-            }
-        };
+                setShowConfirmModal({ isOpen: false, type: null });
+                setScoreResult({ score: totalScore, max: maxPossibleScore });
+                setIsSubmitted(true);
+                
+                if (onComplete) {
+                    onComplete({ quizId: quiz.id, score: totalScore, maxScore: maxPossibleScore });
+                }
+            };
 
-        if (isSubmitted && scoreResult) {
+            if (isSubmitted && scoreResult) {
                 return (
                     <div className="fixed inset-0 bg-gray-100 z-[9999] flex items-center justify-center animate-fadeIn">
                         <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center border-t-4 border-green-500">
@@ -1533,7 +1567,6 @@
 
             return (
                 <div className="fixed inset-0 bg-gray-50 z-[9999] flex flex-col animate-fadeIn">
-                    {/* Hộp thoại xác nhận tùy chỉnh thay thế cho window.confirm */}
                     {showConfirmModal.isOpen && (
                         <div className="fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center animate-fadeIn">
                             <div className="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full mx-4 text-center">
@@ -1572,7 +1605,6 @@
                     </div>
 
                     <div className="flex-1 overflow-hidden flex flex-col md:flex-row max-w-7xl mx-auto w-full p-4 gap-4">
-                        {/* Bảng điều hướng */}
                         <div className="w-full md:w-1/4 bg-white rounded-xl shadow-sm border p-4 flex flex-col h-auto md:h-full">
                             <div className="flex space-x-2 border-b pb-3 mb-3">
                                 <button onClick={()=>setActiveTab('part1')} className={`flex-1 py-1.5 text-sm font-bold rounded ${activeTab==='part1'?'bg-green-600 text-white':'bg-gray-100 text-gray-600'}`}>P.1 ({quiz.questions?.part1?.length||0})</button>
@@ -1597,7 +1629,6 @@
                             </div>
                         </div>
 
-                        {/* Vùng làm bài */}
                         <div className="w-full md:w-3/4 bg-white rounded-xl shadow-sm border p-4 md:p-6 overflow-y-auto h-full scroll-smooth">
                             <h3 className="text-xl font-bold text-gray-800 mb-6 border-b pb-2">
                                 {activeTab === 'part1' && "Phần 1: Trắc nghiệm nhiều lựa chọn"}
@@ -1659,12 +1690,11 @@
             const [activeChapter, setActiveChapter] = useState(null);
             const [activeLesson, setActiveLesson] = useState(null);
             const [activeQuiz, setActiveQuiz] = useState(null);
-            const [quizResults, setQuizResults] = useState({}); // Lưu tạm kết quả làm bài trong phiên này để thống kê
+            const [quizResults, setQuizResults] = useState({});
 
             const grade = user.grade;
             const chapters = lessonTree[grade] || {};
 
-            // --- Tính toán thống kê ---
             let totalAssigned = 0;
             Object.values(chapters).forEach(lessons => {
                 lessons.forEach(lesson => {
@@ -1699,7 +1729,6 @@
             const handleQuizComplete = (result) => {
                 setQuizResults(prev => ({...prev, [result.quizId]: { score: result.score, max: result.maxScore }}));
             };
-            // --- Kết thúc tính toán thống kê ---
 
             return (
                 <div className="min-h-screen bg-gray-50 flex flex-col animate-fadeIn">
@@ -1712,7 +1741,6 @@
                             </div>
                         </div>
                         
-                        {/* Thanh thống kê học tập */}
                         <div className="bg-green-800/60 border-t border-green-600 px-4 py-2 text-sm text-green-100 flex flex-wrap gap-4 md:gap-8 justify-center md:justify-start shadow-inner">
                             <div className="flex items-center" title="Số lượng đề thi bạn đã hoàn thành"><i className="fas fa-check-square mr-2 opacity-70"></i> Đã làm: <span className="font-bold text-white ml-1">{attempted}</span><span className="opacity-70 text-xs ml-0.5">/{totalAssigned}</span></div>
                             <div className="flex items-center" title="Số lượng đề thi được giao nhưng chưa làm"><i className="fas fa-clock mr-2 opacity-70"></i> Chưa làm: <span className="font-bold text-white ml-1">{pending}</span></div>
@@ -1728,7 +1756,6 @@
                     </div>
 
                     <div className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-6 flex flex-col md:flex-row gap-6">
-                        {/* Cột Danh sách bài học */}
                         <div className="w-full md:w-1/3 bg-white rounded-xl shadow-sm border p-4 h-fit">
                             <h3 className="font-bold text-lg mb-4 text-green-800 border-b pb-2"><i className="fas fa-list-ul mr-2"></i> Chương trình {grade}</h3>
                             <div className="space-y-3">
@@ -1754,7 +1781,6 @@
                             </div>
                         </div>
 
-                        {/* Cột Nội dung bài học */}
                         <div className="w-full md:w-2/3 bg-white rounded-xl shadow-sm border p-5 md:p-8 flex flex-col">
                             {activeLesson ? (
                                 <div className="animate-fadeIn space-y-8">
@@ -1825,11 +1851,11 @@
         };
 
         const App = () => {
-            const [user, setUser] = useState(null); // null, {role:'teacher'}, {role:'student', phone, grade, cls, name, isFirstTime}
+            const [user, setUser] = useState(null);
             const [classTree, setClassTree] = useState(initialClassData);
             const [lessonTree, setLessonTree] = useState(initialLessonData);
-            const [registeredStudents, setRegisteredStudents] = useState({}); // Lưu trữ tài khoản học sinh đã đăng ký hoặc đổi mật khẩu
-            const [registeredTeachers, setRegisteredTeachers] = useState({"admin": "admin"}); // Lưu tài khoản giáo viên đã đăng ký
+            const [registeredStudents, setRegisteredStudents] = useState({});
+            const [registeredTeachers, setRegisteredTeachers] = useState({"admin": "admin"});
             
             const [dataLoaded, setDataLoaded] = useState(false);
             const skipNextWrite = useRef(false);
@@ -1884,7 +1910,6 @@
                 }
                 
                 if (role === 'student') {
-                    // 1. Kiểm tra tài khoản đã tự đăng ký hoặc đã đổi mật khẩu
                     if (registeredStudents[phone]) {
                         if (registeredStudents[phone] === pass) {
                             setUser({ role: 'student', phone: phone, isFirstTime: true });
@@ -1894,7 +1919,6 @@
                         return;
                     }
 
-                    // 2. Dự phòng: Kiểm tra xem GV đã thêm SĐT này vào lớp chưa (dùng pass mặc định 00000000)
                     let foundAny = false;
                     for (const grade in classTree) {
                         for (const cls in classTree[grade]) {
@@ -1938,7 +1962,7 @@
 
             const handleStudentChangePass = (newPass) => {
                 if (!newPass || newPass.trim() === "") return showToast("Mật khẩu không được để trống!", "error");
-                setRegisteredStudents(prev => ({...prev, [forceChangePassUser.phone]: newPass})); // Lưu mật khẩu mới vào hệ thống
+                setRegisteredStudents(prev => ({...prev, [forceChangePassUser.phone]: newPass})); 
                 setUser(forceChangePassUser);
                 setForceChangePassUser(null);
                 showToast("Đổi mật khẩu thành công!", "success");
@@ -1947,12 +1971,10 @@
             const AuthScreen = () => {
                 const [authModal, setAuthModal] = useState({ isOpen: false });
                 
-                // Teacher state
                 const [tMode, setTMode] = useState('login');
                 const [tPhone, setTPhone] = useState("");
                 const [tPass, setTPass] = useState("");
                 
-                // Student state
                 const [sMode, setSMode] = useState('login');
                 const [sPhone, setSPhone] = useState("");
                 const [sPass, setSPass] = useState("");
@@ -1989,7 +2011,6 @@
                         </div>
                         
                         <div className="w-full max-w-5xl grid md:grid-cols-2 gap-8">
-                            {/* Cột Học Sinh */}
                             <div className="bg-white rounded-2xl shadow-xl overflow-hidden animate-fadeIn border-t-4 border-green-500">
                                 <div className="bg-green-50 p-6 text-center border-b border-green-100">
                                     <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-3"><i className="fas fa-user-graduate"></i></div>
@@ -2017,7 +2038,6 @@
                                 </div>
                             </div>
 
-                            {/* Cột Giáo Viên */}
                             <div className="bg-white rounded-2xl shadow-xl overflow-hidden animate-fadeIn border-t-4 border-indigo-500">
                                 <div className="bg-indigo-50 p-6 text-center border-b border-indigo-100">
                                     <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-3"><i className="fas fa-chalkboard-teacher"></i></div>
@@ -2050,7 +2070,7 @@
                 );
             };
 
-                      if (!dataLoaded) {
+            if (!dataLoaded) {
                 return <div className="min-h-screen flex items-center justify-center text-gray-500 font-bold">Đang tải dữ liệu...</div>;
             }
             return (
