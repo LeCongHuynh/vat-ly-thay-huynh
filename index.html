@@ -61,28 +61,15 @@
 
         const generateId = () => Math.random().toString(36).substr(2, 9);
 
-        // Dữ liệu mẫu ban đầu
+        // Đã xóa dữ liệu mẫu theo yêu cầu - Khởi tạo dữ liệu trắng hoàn toàn
         const initialClassData = {
-            "Khối 10": {
-                "10A1": [
-                    { id: generateId(), name: "Nguyễn Văn A", phone: "0901234567" },
-                    { id: generateId(), name: "Trần Thị B", phone: "0987654321" },
-                    { id: generateId(), name: "Lê Văn C", phone: "12345" }
-                ],
-                "10A2": []
-            },
-            "Khối 11": { "11B1": [] },
-            "Khối 12": { "12C1": [] }
+            "Khối 10": {},
+            "Khối 11": {},
+            "Khối 12": {}
         };
 
         const initialLessonData = {
-            "Khối 10": {
-                "Chương 1: Động học": [
-                    { id: generateId(), name: "Bài 1: Chuyển động thẳng đều", theoryLinks: [{id: generateId(), title: "Lý thuyết CĐT Đều", url: "https://drive.google.com/..."}], simLinks: [{id: generateId(), title: "Mô phỏng Phet", url: "https://phet.colorado.edu/..."}], quizzes: [] },
-                    { id: generateId(), name: "Bài 2: Chuyển động biến đổi đều", theoryLinks: [], simLinks: [], quizzes: [] }
-                ],
-                "Chương 2: Động lực học": []
-            },
+            "Khối 10": {},
             "Khối 11": {},
             "Khối 12": {}
         };
@@ -543,7 +530,6 @@
                             }
                         }
                         
-                        // Đóng modal excel và mở Modal soạn đề
                         onConfirmImport(parsedQuiz);
                         showToast("Nhập đề thành công! Hãy kiểm tra và lưu lại.", "success");
                     } catch (error) {
@@ -685,7 +671,7 @@
             
             // Student state
             const [selectedGrade, setSelectedGrade] = useState("Khối 10");
-            const [selectedClass, setSelectedClass] = useState("10A1");
+            const [selectedClass, setSelectedClass] = useState("");
             const [studentInputs, setStudentInputs] = useState([{ name: "", phone: "" }]);
             const [selectedStudents, setSelectedStudents] = useState([]);
             const [isSelecting, setIsSelecting] = useState(false);
@@ -708,10 +694,15 @@
 
             // Stats state
             const [statGrade, setStatGrade] = useState("Khối 10");
-            const [statClass, setStatClass] = useState("10A1");
+            const [statClass, setStatClass] = useState("");
             const [statStudentId, setStatStudentId] = useState("");
             const [statChapter, setStatChapter] = useState("");
             const [statLessonId, setStatLessonId] = useState("");
+
+            useEffect(() => {
+                const clsKeys = Object.keys(classTree[selectedGrade] || {});
+                if (!clsKeys.includes(selectedClass) && clsKeys.length > 0) setSelectedClass(clsKeys[0]);
+            }, [selectedGrade, classTree]);
 
             const availableStatGrades = Object.keys(classTree);
             const curStatGrade = availableStatGrades.includes(statGrade) ? statGrade : availableStatGrades[0] || "";
@@ -780,6 +771,7 @@
             };
 
             const handleSaveStudents = () => {
+                if(!selectedClass) return showToast("Vui lòng chọn lớp đích trước", "error");
                 const valid = studentInputs.filter(s => s.name.trim() && s.phone.trim()).map(s => ({...s, id: generateId()}));
                 if(valid.length === 0) return showToast("Vui lòng nhập dữ liệu!", "error");
                 const newTree = {...classTree};
@@ -822,6 +814,7 @@
             };
 
             const handleImportStudents = (e) => {
+                if(!selectedClass) return showToast("Vui lòng chọn lớp đích trước", "error");
                 const file = e.target.files[0];
                 if (!file) return;
                 if (!window.XLSX) return showToast("Thư viện Excel chưa sẵn sàng!", "error");
@@ -934,18 +927,6 @@
                 }});
             };
 
-            const updateLink = (chapter, lessonIndex, field) => {
-                setPromptConfig({ isOpen: true, title: "Cập nhật Link", placeholder: "Dán link vào đây...", initialValue: lessonTree[lessonGrade][chapter][lessonIndex][field], onConfirm: (val) => {
-                    const newTree = JSON.parse(JSON.stringify(lessonTree));
-                    newTree[lessonGrade][chapter][lessonIndex][field] = val;
-                    setLessonTree(newTree); 
-                    if (selectedLesson && selectedLesson.chapter === chapter && selectedLesson.lessonIndex === lessonIndex) {
-                        setSelectedLesson({...selectedLesson, [field]: val});
-                    }
-                    closeAllModals(); showToast("Đã cập nhật!");
-                }});
-            };
-
             return (
                 <div className="min-h-screen bg-gray-50">
                     <div className="bg-indigo-700 text-white shadow-md sticky top-0 z-50">
@@ -980,13 +961,14 @@
                                                         </div>
                                                     </div>
                                                 ))}
+                                                {Object.keys(classTree[grade]).length === 0 && <span className="text-xs text-gray-400 italic">Chưa có lớp</span>}
                                             </div>
                                         </div>
                                     ))}
                                 </div>
                                 <div className="w-full md:w-2/3 bg-white p-5 rounded-xl shadow-sm border flex flex-col">
                                     <div className="flex justify-between items-center mb-4 border-b pb-4">
-                                        <h3 className="font-bold text-xl text-indigo-800">Danh sách {selectedClass}</h3>
+                                        <h3 className="font-bold text-xl text-indigo-800">Danh sách {selectedClass || "chưa chọn lớp"}</h3>
                                         <div className="flex space-x-2">
                                             {isSelecting && selectedStudents.length > 0 && (
                                                 <><button onClick={handleMoveSelected} className="bg-blue-50 text-blue-600 border border-blue-200 px-3 py-1.5 rounded-lg text-sm font-bold">Chuyển ({selectedStudents.length})</button>
@@ -998,15 +980,15 @@
                                     <div className="bg-gray-50 p-4 rounded-lg mb-4 border">
                                         {studentInputs.map((input, idx) => (
                                             <div key={idx} className="flex space-x-2 mb-2">
-                                                <input type="text" placeholder="Họ Tên" value={input.name} onChange={e=>{const n=[...studentInputs]; n[idx].name=e.target.value; setStudentInputs(n);}} className="flex-1 p-2 border rounded" />
-                                                <input type="text" placeholder="SĐT" value={input.phone} onChange={e=>{const n=[...studentInputs]; n[idx].phone=e.target.value; setStudentInputs(n);}} className="flex-1 p-2 border rounded" />
-                                                {idx===studentInputs.length-1 && <button onClick={()=>setStudentInputs([...studentInputs, {name:"", phone:""}])} className="bg-gray-200 px-3 rounded">+</button>}
+                                                <input type="text" placeholder="Họ Tên" value={input.name} onChange={e=>{const n=[...studentInputs]; n[idx].name=e.target.value; setStudentInputs(n);}} className="flex-1 p-2 border rounded" disabled={!selectedClass} />
+                                                <input type="text" placeholder="SĐT" value={input.phone} onChange={e=>{const n=[...studentInputs]; n[idx].phone=e.target.value; setStudentInputs(n);}} className="flex-1 p-2 border rounded" disabled={!selectedClass} />
+                                                {idx===studentInputs.length-1 && <button onClick={()=>setStudentInputs([...studentInputs, {name:"", phone:""}])} className="bg-gray-200 px-3 rounded" disabled={!selectedClass}>+</button>}
                                             </div>
                                         ))}
                                         <div className="flex space-x-2 mt-3">
-                                            <button onClick={handleSaveStudents} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg transition">Thêm Thủ Công</button>
+                                            <button onClick={handleSaveStudents} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg transition" disabled={!selectedClass}>Thêm Thủ Công</button>
                                             <button onClick={handleDownloadStudentTemplate} className="bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 px-4 py-2 rounded-lg font-bold transition flex items-center"><i className="fas fa-download mr-2"></i> Tải File Mẫu</button>
-                                            <button onClick={() => fileInputRef.current && fileInputRef.current.click()} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold transition flex items-center"><i className="fas fa-file-excel mr-2"></i> Nhập Excel</button>
+                                            <button onClick={() => selectedClass ? (fileInputRef.current && fileInputRef.current.click()) : showToast("Chọn lớp trước!", "error")} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold transition flex items-center"><i className="fas fa-file-excel mr-2"></i> Nhập Excel</button>
                                             <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={handleImportStudents} className="hidden" />
                                         </div>
                                     </div>
@@ -1029,6 +1011,7 @@
                                                         </td>
                                                     </tr>
                                                 ))}
+                                                {students.length === 0 && <tr><td colSpan="5" className="p-6 text-center text-gray-400 italic">Chưa có học sinh nào trong lớp này.</td></tr>}
                                             </tbody>
                                         </table>
                                     </div>
@@ -1036,6 +1019,7 @@
                             </div>
                         )}
 
+                        {}
                         {activeTab === 'lessons' && (
                             <div className="flex flex-col md:flex-row gap-6 animate-fadeIn">
                                 <div className="w-full md:w-1/3 bg-white p-5 rounded-xl shadow-sm border h-[calc(100vh-140px)]">
@@ -1156,7 +1140,7 @@
                                                                     <span><i className="far fa-clock"></i> {quiz.timeLimit} phút</span>
                                                                     <span>|</span>
                                                                     <span title="Các lớp được giao">
-                                                                        <i className="fas fa-users text-purple-500"></i> {quiz.assignedClasses?.length > 0 ? quiz.assignedClasses.join(', ') : 'Chưa giao'}
+                                                                        <i className="fas fa-users text-purple-500"></i> {!quiz.assignedClasses || quiz.assignedClasses.length === 0 ? 'Tất cả học sinh khối' : quiz.assignedClasses.join(', ')}
                                                                     </span>
                                                                 </div>
                                                             </div>
@@ -1182,6 +1166,7 @@
                             </div>
                         )}
 
+                        {}
                         {activeTab === 'stats' && (
                             <div className="bg-white p-5 rounded-xl shadow-sm border min-h-[500px] animate-fadeIn">
                                 <div className="flex space-x-4 mb-6 border-b pb-3">
@@ -1200,9 +1185,45 @@
                                                 {availableStatClasses.map(c => <option key={c} value={c}>{c}</option>)}
                                             </select>
                                         </div>
-                                        <table className="w-full text-left border"><thead className="bg-gray-50 border-b"><tr><th className="p-3">STT</th><th className="p-3">Họ Tên</th><th className="p-3 text-center">Tiến độ</th><th className="p-3 text-center">Điểm TB</th><th className="p-3">Xếp Loại</th></tr></thead>
+                                        <table className="w-full text-left border"><thead className="bg-gray-50 border-b"><tr><th className="p-3">STT</th><th className="p-3">Họ Tên</th><th className="p-3 text-center">Tiến độ (Đề)</th><th className="p-3 text-center">Điểm TB (10đ)</th><th className="p-3">Xếp Loại</th></tr></thead>
                                         <tbody>
-                                            {availableStatStudents.map((s,i) => ( <tr key={s.id} className="border-b"><td className="p-3">{i+1}</td><td className="p-3 font-bold">{s.name}</td><td className="p-3 text-center">15/20</td><td className="p-3 text-center font-bold text-blue-600">8.5</td><td className="p-3 text-green-600 font-bold">Giỏi</td></tr> ))}
+                                            {availableStatStudents.map((s,i) => {
+                                                let totalAssigned = 0;
+                                                Object.values(lessonTree[curStatGrade] || {}).forEach(lessons => {
+                                                    lessons.forEach(l => {
+                                                        (l.quizzes || []).forEach(q => {
+                                                            if (!q.assignedClasses || q.assignedClasses.length === 0 || q.assignedClasses.includes(curStatClass)) totalAssigned++;
+                                                        });
+                                                    });
+                                                });
+                                                
+                                                const results = s.results || {};
+                                                const attempted = Object.keys(results).length;
+                                                let avgScore10 = 0;
+                                                if (attempted > 0) {
+                                                    let total = 0;
+                                                    Object.values(results).forEach(r => total += r.highest);
+                                                    avgScore10 = total / attempted;
+                                                }
+                                                
+                                                let rank = "Chưa xếp loại";
+                                                if (attempted > 0) {
+                                                    if (avgScore10 >= 8) rank = "Giỏi";
+                                                    else if (avgScore10 >= 6.5) rank = "Khá";
+                                                    else if (avgScore10 >= 5) rank = "Trung bình";
+                                                    else rank = "Yếu";
+                                                }
+
+                                                return ( 
+                                                    <tr key={s.id} className="border-b">
+                                                        <td className="p-3">{i+1}</td>
+                                                        <td className="p-3 font-bold">{s.name}</td>
+                                                        <td className="p-3 text-center">{attempted}/{totalAssigned}</td>
+                                                        <td className="p-3 text-center font-bold text-blue-600">{attempted > 0 ? avgScore10.toFixed(1) : '-'}</td>
+                                                        <td className={`p-3 font-bold ${rank === 'Giỏi' ? 'text-green-600' : rank === 'Khá' ? 'text-blue-600' : rank === 'Yếu' ? 'text-red-600' : 'text-gray-500'}`}>{rank}</td>
+                                                    </tr> 
+                                                );
+                                            })}
                                             {availableStatStudents.length === 0 && <tr><td colSpan="5" className="p-3 text-center text-gray-500">Chưa có học sinh trong lớp này</td></tr>}
                                         </tbody></table>
                                     </div>
@@ -1222,41 +1243,38 @@
                                         </div>
                                         {curStatStudentId ? (
                                             <div className="overflow-x-auto">
-                                                <table className="w-full text-left border min-w-[800px]"><thead className="bg-gray-50 border-b"><tr><th className="p-3 w-12 text-center">STT</th><th className="p-3">Họ và Tên</th><th className="p-3">Tên đề</th><th className="p-3 text-center">Điểm TB</th><th className="p-3 text-center">Điểm cao nhất</th><th className="p-3 text-center">Số lượt</th><th className="p-3">Thời gian các lượt</th></tr></thead>
+                                                <table className="w-full text-left border min-w-[800px]"><thead className="bg-gray-50 border-b"><tr><th className="p-3 w-12 text-center">STT</th><th className="p-3">Tên đề</th><th className="p-3 text-center">Điểm TB</th><th className="p-3 text-center">Điểm cao nhất</th><th className="p-3 text-center">Số lượt</th><th className="p-3">Chi tiết các lượt làm</th></tr></thead>
                                                 <tbody>
-                                                    {availableStatChapters.length > 0 && availableStatChapters.some(c => lessonTree[curStatGrade][c].some(l => l.quiz)) ? (
+                                                    {availableStatChapters.length > 0 ? (
                                                         availableStatChapters.flatMap((chapter, cIdx) => 
-                                                            lessonTree[curStatGrade][chapter].filter(l => l.quiz).map((l, lIdx) => {
-                                                                const studentName = availableStatStudents.find(s => s.id === curStatStudentId)?.name || "";
-                                                                const attempts = Math.floor(Math.random() * 3) + 1;
-                                                                const scores = Array.from({length: attempts}, () => Number((Math.random() * 4 + 6).toFixed(1)));
-                                                                const highest = Math.max(...scores).toFixed(1);
-                                                                const avg = (scores.reduce((a,b)=>a+b, 0) / attempts).toFixed(1);
-                                                                const times = Array.from({length: attempts}, (_, idx) => `Lần ${idx+1}: ${Math.floor(Math.random() * 30 + 10)}p`).join(', ');
-                                                                return (
-                                                                    <tr key={l.id} className="border-b hover:bg-gray-50">
-                                                                        <td className="p-3 text-center">{cIdx * 10 + lIdx + 1}</td>
-                                                                        <td className="p-3 font-medium text-gray-800">{studentName}</td>
-                                                                        <td className="p-3 font-bold">{l.quiz.title}</td>
-                                                                        <td className="p-3 text-center font-bold text-blue-600">{avg}</td>
-                                                                        <td className="p-3 text-center font-bold text-green-600">{highest}</td>
-                                                                        <td className="p-3 text-center">{attempts}</td>
-                                                                        <td className="p-3 text-gray-600 text-xs">{times}</td>
-                                                                    </tr>
-                                                                );
-                                                            })
+                                                            (lessonTree[curStatGrade][chapter] || []).flatMap((l, lIdx) => 
+                                                                (l.quizzes || [])
+                                                                .filter(q => !q.assignedClasses || q.assignedClasses.length === 0 || q.assignedClasses.includes(curStatClass))
+                                                                .map((quiz, qIdx) => {
+                                                                    const student = availableStatStudents.find(s => s.id === curStatStudentId);
+                                                                    const result = student?.results?.[quiz.id];
+                                                                    
+                                                                    let attempts = 0, highest = '-', avg = '-', times = 'Chưa làm';
+                                                                    if (result && result.attempts > 0) {
+                                                                        attempts = result.attempts;
+                                                                        highest = result.highest.toFixed(1);
+                                                                        avg = (result.scores.reduce((a,b)=>a+b, 0) / attempts).toFixed(1);
+                                                                        times = result.times.join(', ');
+                                                                    }
+                                                                    return (
+                                                                        <tr key={`${l.id}-${quiz.id}`} className="border-b hover:bg-gray-50">
+                                                                            <td className="p-3 text-center">{cIdx * 10 + lIdx + 1}</td>
+                                                                            <td className="p-3 font-bold">{quiz.title}</td>
+                                                                            <td className="p-3 text-center font-bold text-blue-600">{avg}</td>
+                                                                            <td className="p-3 text-center font-bold text-green-600">{highest}</td>
+                                                                            <td className="p-3 text-center">{attempts}</td>
+                                                                            <td className="p-3 text-gray-600 text-xs">{times}</td>
+                                                                        </tr>
+                                                                    );
+                                                                })
+                                                            )
                                                         )
-                                                    ) : (
-                                                        <tr className="border-b hover:bg-gray-50">
-                                                            <td className="p-3 text-center">1</td>
-                                                            <td className="p-3 font-medium text-gray-800">{availableStatStudents.find(s => s.id === curStatStudentId)?.name || ""}</td>
-                                                            <td className="p-3 font-bold">Bài 1: CĐT Đều (Mẫu)</td>
-                                                            <td className="p-3 text-center font-bold text-blue-600">8.5</td>
-                                                            <td className="p-3 text-center font-bold text-green-600">9.0</td>
-                                                            <td className="p-3 text-center">2</td>
-                                                            <td className="p-3 text-gray-600 text-xs">Lần 1: 30p, Lần 2: 25p</td>
-                                                        </tr>
-                                                    )}
+                                                    ) : <tr><td colSpan="6" className="text-center p-4 text-gray-500">Chưa có dữ liệu bài kiểm tra</td></tr>}
                                                 </tbody></table>
                                             </div>
                                         ) : <div className="text-center text-gray-500 py-8 border rounded-lg bg-gray-50">Không có dữ liệu học sinh. Vui lòng chọn lớp có học sinh.</div>}
@@ -1277,66 +1295,50 @@
                                             <select value={curStatLessonId} onChange={e => setStatLessonId(e.target.value)} className="border p-2 rounded bg-gray-50 text-sm max-w-xs truncate">
                                                 {availableStatLessons.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                                             </select>
-                                            {/* Ô hiển thị Đề (Quiz) thuộc về Bài học hiện tại */}
-                                            <select className="border p-2 rounded bg-indigo-50 text-indigo-700 font-bold text-sm max-w-xs truncate" disabled>
-                                                <option>{availableStatLessons.find(l => l.id === curStatLessonId)?.quiz?.title || "Bài học này chưa có đề"}</option>
-                                            </select>
                                         </div>
-                                        {curStatLessonId && availableStatLessons.find(l => l.id === curStatLessonId)?.quiz ? (
+                                        {curStatLessonId && (availableStatLessons.find(l => l.id === curStatLessonId)?.quizzes || []).length > 0 ? (
                                             <div className="flex flex-col space-y-6">
-                                                <div className="overflow-x-auto">
-                                                    <h4 className="font-bold text-gray-700 mb-2">Phần 1: Kết quả của học sinh</h4>
-                                                    <table className="w-full text-left border text-sm min-w-[700px]">
-                                                        <thead className="bg-gray-50 border-b">
-                                                            <tr>
-                                                                <th className="p-3 w-12 text-center">STT</th>
-                                                                <th className="p-3">Họ và Tên</th>
-                                                                <th className="p-3 text-center">Điểm TB</th>
-                                                                <th className="p-3 text-center">Điểm Cao Nhất</th>
-                                                                <th className="p-3 text-center">Số Lượt</th>
-                                                                <th className="p-3">Thời gian các lượt</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            {availableStatStudents.map((s, i) => {
-                                                                const attempts = Math.floor(Math.random() * 3) + 1;
-                                                                const scores = Array.from({length: attempts}, () => Number((Math.random() * 4 + 6).toFixed(1)));
-                                                                const highest = Math.max(...scores).toFixed(1);
-                                                                const avg = (scores.reduce((a,b)=>a+b, 0) / attempts).toFixed(1);
-                                                                const times = Array.from({length: attempts}, (_, idx) => `Lần ${idx+1}: ${Math.floor(Math.random() * 30 + 10)}p`).join(', ');
-                                                                
-                                                                return (
-                                                                    <tr key={s.id} className="border-b hover:bg-gray-50">
-                                                                        <td className="p-3 text-center">{i + 1}</td>
-                                                                        <td className="p-3 font-bold">{s.name}</td>
-                                                                        <td className="p-3 text-center font-bold text-blue-600">{avg}</td>
-                                                                        <td className="p-3 text-center font-bold text-green-600">{highest}</td>
-                                                                        <td className="p-3 text-center">{attempts}</td>
-                                                                        <td className="p-3 text-gray-600 text-xs">{times}</td>
-                                                                    </tr>
-                                                                );
-                                                            })}
-                                                            {availableStatStudents.length === 0 && <tr><td colSpan="6" className="text-center p-4 text-gray-500">Chưa có học sinh trong lớp này</td></tr>}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                                
-                                                <div className="overflow-x-auto">
-                                                    <h4 className="font-bold text-gray-700 mb-2">Phần 2: Thống kê theo câu hỏi</h4>
-                                                    <table className="w-full text-left border text-sm min-w-[500px]">
-                                                        <thead className="bg-gray-50 border-b">
-                                                            <tr>
-                                                                <th className="p-3">Câu hỏi (Minh họa)</th>
-                                                                <th className="p-3 text-center text-green-600">Số HS Đúng</th>
-                                                                <th className="p-3 text-center text-red-600">Số HS Sai</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            <tr className="border-b hover:bg-gray-50"><td className="p-3 font-bold">Câu 1 (Chọn 1)</td><td className="p-3 text-center font-bold text-green-600">{(Math.random() * 20 + 10).toFixed()}</td><td className="p-3 text-center font-bold text-red-600">{(Math.random() * 10).toFixed()}</td></tr>
-                                                            <tr className="border-b hover:bg-gray-50"><td className="p-3 font-bold">Câu 2 (Đúng/Sai)</td><td className="p-3 text-center font-bold text-green-600">{(Math.random() * 20 + 10).toFixed()}</td><td className="p-3 text-center font-bold text-red-600">{(Math.random() * 10).toFixed()}</td></tr>
-                                                        </tbody>
-                                                    </table>
-                                                </div>
+                                                {(availableStatLessons.find(l => l.id === curStatLessonId)?.quizzes || []).map(quiz => (
+                                                    <div key={quiz.id} className="overflow-x-auto mb-6">
+                                                        <h4 className="font-bold text-gray-700 mb-2 border-l-4 border-indigo-500 pl-2">Đề: {quiz.title}</h4>
+                                                        <table className="w-full text-left border text-sm min-w-[700px]">
+                                                            <thead className="bg-gray-50 border-b">
+                                                                <tr>
+                                                                    <th className="p-3 w-12 text-center">STT</th>
+                                                                    <th className="p-3">Họ và Tên</th>
+                                                                    <th className="p-3 text-center">Điểm TB</th>
+                                                                    <th className="p-3 text-center">Điểm Cao Nhất</th>
+                                                                    <th className="p-3 text-center">Số Lượt</th>
+                                                                    <th className="p-3">Thời gian các lượt</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {availableStatStudents.map((s, i) => {
+                                                                    const result = s.results?.[quiz.id];
+                                                                    let attempts = 0, highest = '-', avg = '-', times = 'Chưa làm';
+                                                                    if (result && result.attempts > 0) {
+                                                                        attempts = result.attempts;
+                                                                        highest = result.highest.toFixed(1);
+                                                                        avg = (result.scores.reduce((a,b)=>a+b, 0) / attempts).toFixed(1);
+                                                                        times = result.times.join(', ');
+                                                                    }
+                                                                    
+                                                                    return (
+                                                                        <tr key={s.id} className="border-b hover:bg-gray-50">
+                                                                            <td className="p-3 text-center">{i + 1}</td>
+                                                                            <td className="p-3 font-bold">{s.name}</td>
+                                                                            <td className="p-3 text-center font-bold text-blue-600">{avg}</td>
+                                                                            <td className="p-3 text-center font-bold text-green-600">{highest}</td>
+                                                                            <td className="p-3 text-center">{attempts}</td>
+                                                                            <td className="p-3 text-gray-600 text-xs">{times}</td>
+                                                                        </tr>
+                                                                    );
+                                                                })}
+                                                                {availableStatStudents.length === 0 && <tr><td colSpan="6" className="text-center p-4 text-gray-500">Chưa có học sinh trong lớp này</td></tr>}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                ))}
                                             </div>
                                         ) : <div className="text-center text-gray-500 py-8 border rounded-lg bg-gray-50">Bài học này hiện chưa được cấu hình Đề kiểm tra. Hãy sang tab "Bài học" để soạn đề.</div>}
                                     </div>
@@ -1345,6 +1347,7 @@
                         )}
                     </div>
 
+                    {/* Modals... */}
                     <CustomModal {...modalConfig} onCancel={closeAllModals} />
                     <CustomPrompt {...promptConfig} onCancel={closeAllModals} />
                     <MultiSelectModal {...multiSelectConfig} onCancel={closeAllModals} />
@@ -1554,8 +1557,8 @@
                             <h2 className="text-2xl font-bold text-gray-800 mb-2">Hoàn thành bài thi!</h2>
                             <p className="text-gray-500 mb-6">Kết quả của bạn đã được ghi nhận vào hệ thống.</p>
                             <div className="bg-green-50 p-6 rounded-xl mb-6 border border-green-100">
-                                <span className="block text-sm text-green-700 font-bold mb-1">ĐIỂM SỐ CỦA BẠN</span>
-                                <span className="text-5xl font-black text-green-600">{scoreResult.score.toFixed(2)} <span className="text-2xl text-green-400">/ {scoreResult.max.toFixed(2)}</span></span>
+                                <span className="block text-sm text-green-700 font-bold mb-1">ĐIỂM SỐ CỦA BẠN (Hệ Số 10)</span>
+                                <span className="text-5xl font-black text-green-600">{((scoreResult.score / scoreResult.max) * 10).toFixed(2)}</span>
                             </div>
                             <button onClick={onClose} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition shadow-md">
                                 Về Không Gian Học Tập
@@ -1686,20 +1689,21 @@
             );
         };
 
-        const StudentView = ({ user, classTree, lessonTree, onLogout }) => {
+        const StudentView = ({ user, classTree, setClassTree, lessonTree, onLogout }) => {
             const [activeChapter, setActiveChapter] = useState(null);
             const [activeLesson, setActiveLesson] = useState(null);
             const [activeQuiz, setActiveQuiz] = useState(null);
-            const [quizResults, setQuizResults] = useState({});
 
             const grade = user.grade;
             const chapters = lessonTree[grade] || {};
+            const studentObj = classTree[user.grade]?.[user.cls]?.find(s => s.id === user.studentId);
+            const quizResults = studentObj?.results || {};
 
             let totalAssigned = 0;
             Object.values(chapters).forEach(lessons => {
                 lessons.forEach(lesson => {
                     (lesson.quizzes || []).forEach(q => {
-                        if (q.assignedClasses?.includes(user.cls)) {
+                        if (!q.assignedClasses || q.assignedClasses.length === 0 || q.assignedClasses.includes(user.cls)) {
                             totalAssigned++;
                         }
                     });
@@ -1711,11 +1715,11 @@
             
             let avgScore10 = 0;
             if (attempted > 0) {
-                let totalPercentage = 0;
+                let totalScore = 0;
                 Object.values(quizResults).forEach(res => {
-                    if(res.max > 0) totalPercentage += (res.score / res.max);
+                    totalScore += res.highest;
                 });
-                avgScore10 = (totalPercentage / attempted) * 10;
+                avgScore10 = totalScore / attempted;
             }
 
             let rank = "Chưa xếp loại";
@@ -1727,7 +1731,26 @@
             }
 
             const handleQuizComplete = (result) => {
-                setQuizResults(prev => ({...prev, [result.quizId]: { score: result.score, max: result.maxScore }}));
+                const newTree = { ...classTree };
+                const clsStudents = newTree[user.grade][user.cls];
+                const studentIdx = clsStudents.findIndex(s => s.id === user.studentId);
+                if (studentIdx > -1) {
+                    const s = clsStudents[studentIdx];
+                    if (!s.results) s.results = {};
+                    
+                    const existingResult = s.results[result.quizId] || { attempts: 0, scores: [], highest: 0, times: [] };
+                    const currentScore10 = (result.score / result.maxScore) * 10;
+                    
+                    existingResult.attempts += 1;
+                    existingResult.scores.push(currentScore10);
+                    existingResult.highest = Math.max(existingResult.highest || 0, currentScore10);
+                    
+                    const now = new Date();
+                    existingResult.times.push(`Lần ${existingResult.attempts}: ${currentScore10.toFixed(1)}đ (${now.getDate()}/${now.getMonth()+1})`);
+                    
+                    s.results[result.quizId] = existingResult;
+                    setClassTree(newTree);
+                }
             };
 
             return (
@@ -1817,21 +1840,29 @@
                                     <div className="bg-green-50/30 rounded-xl border border-green-100 p-5">
                                         <h4 className="font-bold text-green-800 mb-4 text-lg flex items-center"><i className="fas fa-tasks mr-2 text-2xl"></i> 3. Đề Ôn Tập & Kiểm Tra</h4>
                                         <div className="grid gap-4">
-                                            {(activeLesson.quizzes||[]).filter(q => q.assignedClasses?.includes(user.cls)).map((quiz) => (
-                                                <div key={quiz.id} className="p-4 border border-green-300 rounded-xl bg-white flex flex-col md:flex-row justify-between items-start md:items-center shadow-sm hover:shadow-md transition">
-                                                    <div className="mb-3 md:mb-0">
-                                                        <h5 className="font-bold text-lg text-gray-800">{quiz.title}</h5>
-                                                        <div className="flex items-center space-x-4 text-sm text-gray-500 mt-2">
-                                                            <span className="bg-gray-100 px-2 py-1 rounded font-medium"><i className="far fa-clock text-green-600 mr-1"></i> {quiz.timeLimit} phút</span>
-                                                            <span className="bg-gray-100 px-2 py-1 rounded font-medium"><i className="fas fa-list-ol text-blue-600 mr-1"></i> {(quiz.questions?.part1?.length||0) + (quiz.questions?.part2?.length||0) + (quiz.questions?.part3?.length||0)} câu</span>
+                                            {(activeLesson.quizzes||[]).filter(q => !q.assignedClasses || q.assignedClasses.length === 0 || q.assignedClasses.includes(user.cls)).map((quiz) => {
+                                                const currentResult = quizResults[quiz.id];
+                                                return (
+                                                    <div key={quiz.id} className="p-4 border border-green-300 rounded-xl bg-white flex flex-col md:flex-row justify-between items-start md:items-center shadow-sm hover:shadow-md transition">
+                                                        <div className="mb-3 md:mb-0">
+                                                            <h5 className="font-bold text-lg text-gray-800">{quiz.title}</h5>
+                                                            <div className="flex items-center space-x-4 text-sm text-gray-500 mt-2">
+                                                                <span className="bg-gray-100 px-2 py-1 rounded font-medium"><i className="far fa-clock text-green-600 mr-1"></i> {quiz.timeLimit} phút</span>
+                                                                <span className="bg-gray-100 px-2 py-1 rounded font-medium"><i className="fas fa-list-ol text-blue-600 mr-1"></i> {(quiz.questions?.part1?.length||0) + (quiz.questions?.part2?.length||0) + (quiz.questions?.part3?.length||0)} câu</span>
+                                                            </div>
+                                                            {currentResult && currentResult.attempts > 0 && (
+                                                                <div className="mt-2 text-sm text-green-600 font-bold">
+                                                                    <i className="fas fa-check-circle mr-1"></i> Đã làm ({currentResult.attempts} lượt) - Điểm cao nhất: {currentResult.highest.toFixed(1)}/10
+                                                                </div>
+                                                            )}
                                                         </div>
+                                                        <button onClick={() => setActiveQuiz(quiz)} className={`w-full md:w-auto text-white px-6 py-2.5 rounded-lg font-bold transition shadow flex justify-center items-center ${currentResult ? 'bg-blue-500 hover:bg-blue-600' : 'bg-green-600 hover:bg-green-700'}`}>
+                                                            <i className="fas fa-pen-nib mr-2"></i> {currentResult ? 'Làm lại bài' : 'Bắt đầu làm bài'}
+                                                        </button>
                                                     </div>
-                                                    <button onClick={() => setActiveQuiz(quiz)} className="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white px-6 py-2.5 rounded-lg font-bold transition shadow flex justify-center items-center">
-                                                        <i className="fas fa-pen-nib mr-2"></i> Bắt đầu làm bài
-                                                    </button>
-                                                </div>
-                                            ))}
-                                            {(!activeLesson.quizzes || activeLesson.quizzes.filter(q => q.assignedClasses?.includes(user.cls)).length === 0) && <p className="text-sm text-gray-500 italic bg-white p-3 rounded border border-dashed">Chưa có đề nào được giao cho lớp của bạn lúc này.</p>}
+                                                );
+                                            })}
+                                            {(!activeLesson.quizzes || activeLesson.quizzes.filter(q => !q.assignedClasses || q.assignedClasses.length === 0 || q.assignedClasses.includes(user.cls)).length === 0) && <p className="text-sm text-gray-500 italic bg-white p-3 rounded border border-dashed">Chưa có đề nào được giao cho lớp của bạn lúc này.</p>}
                                         </div>
                                     </div>
                                 </div>
@@ -1861,7 +1892,8 @@
             const skipNextWrite = useRef(false);
 
             useEffect(() => {
-                const unsub = db.collection("appData").doc("main").onSnapshot((docSnap) => {
+                // Đổi collection từ 'main' thành 'v2_real_data' để bắt đầu một bản lưu dữ liệu sạch hoàn toàn
+                const unsub = db.collection("appData").doc("v2_real_data").onSnapshot((docSnap) => {
                     skipNextWrite.current = true;
                     if (docSnap.exists) {
                         const data = docSnap.data();
@@ -1870,7 +1902,7 @@
                         if (data.registeredStudents) setRegisteredStudents(data.registeredStudents);
                         if (data.registeredTeachers) setRegisteredTeachers(data.registeredTeachers);
                     } else {
-                        db.collection("appData").doc("main").set({
+                        db.collection("appData").doc("v2_real_data").set({
                             classTree: initialClassData,
                             lessonTree: initialLessonData,
                             registeredStudents: {},
@@ -1888,7 +1920,7 @@
             useEffect(() => {
                 if (!dataLoaded) return;
                 if (skipNextWrite.current) { skipNextWrite.current = false; return; }
-                db.collection("appData").doc("main").set({
+                db.collection("appData").doc("v2_real_data").set({
                     classTree, lessonTree, registeredStudents, registeredTeachers
                 }, { merge: true });
             }, [classTree, lessonTree, registeredStudents, registeredTeachers, dataLoaded]);
@@ -2079,7 +2111,7 @@
                      forceChangePassUser ? <CustomPrompt isOpen={true} title="Vui lòng đổi mật khẩu mới để bảo mật" placeholder="Nhập mật khẩu mới của bạn..." initialValue="" onConfirm={handleStudentChangePass} onCancel={()=>setForceChangePassUser(null)} /> :
                      user.role === 'teacher' ? <TeacherManage classTree={classTree} setClassTree={setClassTree} lessonTree={lessonTree} setLessonTree={setLessonTree} onLogout={()=>setUser(null)} showToast={showToast} /> :
                      user.isFirstTime ? <StudentSetup phone={user.phone} classTree={classTree} onComplete={(details) => setUser({...user, ...details, isFirstTime: false})} /> :
-                     <StudentView user={user} classTree={classTree} lessonTree={lessonTree} onLogout={()=>setUser(null)} />
+                     <StudentView user={user} classTree={classTree} setClassTree={setClassTree} lessonTree={lessonTree} onLogout={()=>setUser(null)} />
                     }
                     
                     {toast.show && (
