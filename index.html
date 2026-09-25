@@ -1704,16 +1704,8 @@
                         </div>
 
                         <div className="w-full md:w-3/4 bg-white rounded-xl md:rounded-2xl shadow-sm border p-3 md:p-8 overflow-y-auto h-full scroll-smooth custom-scrollbar relative">
-                            <div className="sticky top-0 bg-white/95 backdrop-blur z-10 pb-2 md:pb-4 mb-3 md:mb-6 border-b">
-                                <h3 className="text-xl md:text-2xl font-black text-indigo-900">
-                                    {activeTab === 'part1' && "Phần 1: Trắc nghiệm nhiều lựa chọn"}
-                                    {activeTab === 'part2' && "Phần 2: Trắc nghiệm Đúng/Sai"}
-                                    {activeTab === 'part3' && "Phần 3: Trả lời ngắn"}
-                                </h3>
-                                <p className="text-sm text-gray-500 mt-1">Học sinh hoàn thành tất cả các câu hỏi dưới đây trước khi nộp bài.</p>
-                            </div>
                             
-                            <div className="space-y-8">
+                            <div className="space-y-8 mt-4 md:mt-0">
                                 {(quiz.questions?.[activeTab] || []).map((q, idx) => (
                                     <div key={q.id} id={`q-${activeTab}-${idx}`} className="p-5 md:p-6 bg-gray-50 rounded-2xl border border-gray-200 shadow-sm scroll-mt-24">
                                         <div className="font-bold text-lg mb-4 flex items-start"><span className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-lg mr-3 shadow-sm whitespace-nowrap">Câu {idx + 1}</span> <div className="flex-1 mt-1 leading-relaxed"><LatexPreview text={q.content} /></div></div>
